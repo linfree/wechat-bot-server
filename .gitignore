@@ -1,0 +1,46 @@
+# =============================================================================
+# IronHive project initialization files (copied by project_init.ps1)
+# These are framework tooling, NOT part of wechat-bot-server
+# =============================================================================
+
+# Project config
+.ironhive.yaml
+.project-card.md
+.doc-health.json
+.env.example
+
+# Project memory (specs, audit, knowledge, decisions, lessons, etc.)
+.project-memory/
+.base-knowledge/
+
+# Claude Code IDE integration (IronHive tooling + Claude local state)
+.claude/
+
+# Scripts (gatekeeper, doctor, verify, eval, audit, etc.)
+.scripts/
+
+# Git hooks (pre-commit, pre-push)
+.husky/
+
+# Other IDE integrations (Trae, OpenCode)
+.trae/
+.opencode/
+opencode.json
+
+# Copilot hooks
+.github/prompts/
+
+# =============================================================================
+# Build output
+# =============================================================================
+/wechat-bot-server.exe
+/wechat-bot-server
+/rsrc.syso
+
+# =============================================================================
+# IDE / Editor
+# =============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            runner: windows-latest
+            ext: .exe
+            ldflags: -H windowsgui -s -w
+          - goos: darwin
+            goarch: amd64
+            runner: macos-latest
+            ext: ''
+            ldflags: -s -w
+            cgo: 0
+          - goos: darwin
+            goarch: arm64
+            runner: macos-latest
+            ext: ''
+            ldflags: -s -w
+            cgo: 0
+          - goos: linux
+            goarch: amd64
+            runner: ubuntu-latest
+            ext: ''
+            ldflags: -s -w
+            cgo: 0
+
+    runs-on: ${{ matrix.runner }}
+    env:
+      CGO_ENABLED: ${{ matrix.cgo || 1 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -ldflags "${{ matrix.ldflags }}" -o wechat-bot-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/wechat-bot-server/
+
+      - name: UPX compress
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          version: latest
+          files: wechat-bot-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          args: --best
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wechat-bot-server-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: wechat-bot-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List files
+        run: ls -lh dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body: |
+            ## 下载
+
+            | 平台 | 文件 |
+            |------|------|
+            | Windows (x64) | `wechat-bot-server-windows-amd64.exe` |
+            | macOS (Intel) | `wechat-bot-server-darwin-amd64` |
+            | macOS (Apple Silicon) | `wechat-bot-server-darwin-arm64` |
+            | Linux (x64) | `wechat-bot-server-linux-amd64` |
+
+            ## 使用说明
+
+            1. 下载对应平台的文件
+            2. **Windows**：双击 `exe`，托盘会出现微信机器人图标，右键打开管理页面扫码登录
+            3. **macOS / Linux**：终端运行 `./wechat-bot-server-*`，浏览器打开 `http://localhost:18081` 扫码登录
+            4. 配置文件位于 `~/.wechat-bot-server/config.json`
+
+            ## macOS 用户注意
+
+            由于应用未签名，首次运行需在终端执行：
+
+            ```bash
+            xattr -cr wechat-bot-server-darwin-*
+            chmod +x wechat-bot-server-darwin-*
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

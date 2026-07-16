@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微信机器人</title>
+<link rel="icon" href="/logo.png" type="image/png">
+<style>
+:root{--g:#07c160;--r:#e74c3c;--y:#f39c12;--bg:#111827;--s:#1f2937;--c:#374151;--t:#f9fafb;--t2:#9ca3af;--t3:#6b7280;--b:#374151;--rd:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
+.app{max-width:860px;margin:0 auto;padding:40px 24px 60px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.topbar h1{font-size:22px;font-weight:700}
+.topbar .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px}
+.topbar .dot.g{background:var(--g);box-shadow:0 0 8px rgba(7,193,96,.4)}.topbar .dot.d{background:var(--t3)}
+.status-tag{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
+.actions{display:flex;align-items:center;gap:12px}
+
+.theme-btn{background:var(--c);border:1px solid var(--b);color:var(--t2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:.15s}
+.theme-btn:hover{color:var(--t);background:var(--b)}
+
+.grid-main{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+@media(max-width:780px){.grid-main{grid-template-columns:1fr}}
+
+.card{background:var(--s);border:1px solid var(--b);border-radius:var(--rd);padding:24px;margin-bottom:20px}
+.card-h{font-size:13px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+
+/* QR */
+.qr-area{text-align:center;padding:16px 0}
+.qr-frame{width:200px;height:200px;margin:0 auto 16px;border:2px dashed var(--b);border-radius:var(--rd);display:flex;align-items:center;justify-content:center;background:#000}
+.qr-frame img{width:100%;height:100%;object-fit:contain;padding:8px;border-radius:var(--rd)}
+.qr-frame .ph{color:var(--t3);font-size:13px}
+.qr-hint{font-size:12px;color:var(--t3);margin-top:8px}
+
+/* Connected state */
+.conn-ok{text-align:center;padding:24px 0}
+.conn-ok .icon{font-size:56px;margin-bottom:12px}
+.conn-ok .txt{font-size:15px;color:var(--g);font-weight:600;margin-bottom:4px}
+.conn-ok .sub{font-size:12px;color:var(--t3)}
+.conn-foot{display:flex;align-items:center;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--b);font-size:12px;color:var(--t3)}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.m-item{background:var(--bg);border-radius:10px;padding:16px}
+.m-item .ml{font-size:11px;color:var(--t3);margin-bottom:6px}
+.m-item .mv{font-size:22px;font-weight:700}
+.mv-g{color:var(--g)}.mv-y{color:var(--y)}.mv-r{color:var(--r)}
+.m-bar{height:4px;background:var(--c);border-radius:2px;margin-top:10px;overflow:hidden}
+.m-bar b{display:block;height:100%;border-radius:2px;transition:width .6s}
+.b-g{background:var(--g)}.b-y{background:var(--y)}.b-r{background:var(--r)}
+.token-m{font-family:'JetBrains Mono',Consolas,monospace;font-size:12px;background:var(--c);padding:3px 8px;border-radius:6px;color:var(--t2)}
+.warn-b{background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--y)}
+
+/* Settings */
+.fld{margin-bottom:16px}
+.fld label{display:block;font-size:13px;font-weight:500;margin-bottom:4px;color:var(--t2)}
+.fld .hint{font-size:11px;color:var(--t3);margin-bottom:6px}
+.fld input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--b);border-radius:10px;font-size:14px;color:var(--t);outline:none;transition:.15s}
+.fld input:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(7,193,96,.1)}
+.btns{display:flex;gap:10px;margin-top:20px}
+.btn{padding:10px 24px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-p{background:var(--g);color:#fff}.btn-p:hover{filter:brightness(1.1)}
+.btn-s{background:var(--c);color:var(--t)}.btn-s:hover{background:var(--b)}
+.btn-d{background:transparent;color:var(--r);border:1px solid var(--r);padding:6px 14px;font-size:12px;border-radius:8px;cursor:pointer}.btn-d:hover{background:rgba(231,76,60,.1)}
+
+.doc code{background:var(--c);padding:2px 8px;border-radius:4px;font-size:12px;font-family:'JetBrains Mono',Consolas,monospace;color:var(--g)}
+.doc pre{background:var(--bg);padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;margin:8px 0 16px}
+.doc .ep{font-size:13px;font-weight:600;margin:16px 0 6px;color:var(--t)}
+.doc .desc{font-size:12px;color:var(--t3);margin-bottom:8px}
+
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);padding:12px 28px;border-radius:24px;font-size:13px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+.toast.on{opacity:1}.t-ok{background:var(--g);color:#fff}.t-err{background:var(--r);color:#fff}
+
+/* Light theme */
+body.light{--bg:#f3f4f6;--s:#fff;--c:#e5e7eb;--t:#111827;--t2:#6b7280;--t3:#9ca3af;--b:#e5e7eb}
+body.light .m-item{background:#f9fafb}
+body.light .fld input{background:#fff}
+body.light .qr-frame{background:#fff}
+
+#connected-panel{display:none}#qr-panel{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Top bar -->
+<div class="topbar">
+<h1>微信机器人</h1>
+<div class="actions">
+<button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️ 亮色</button>
+<span class="status-tag" id="badge"><span class="dot d"></span>未连接</span>
+</div>
+</div>
+
+<div class="grid-main">
+
+<!-- Left: QR / Connected + Metrics -->
+<div>
+<div class="card" id="qr-panel">
+<div class="card-h">扫码登录</div>
+<div class="qr-area">
+<div class="qr-frame" id="qrbox"><div class="ph">获取中...</div></div>
+<div class="qr-hint">用微信扫描二维码登录机器人</div>
+<button class="btn btn-p" style="margin-top:16px" onclick="loadQR()">刷新二维码</button>
+</div>
+</div>
+
+<div class="card" id="connected-panel">
+<div class="conn-ok">
+<div class="icon">&#10003;</div>
+<div class="txt">已连接</div>
+<div class="sub" id="login-info"></div>
+</div>
+<div class="conn-foot">
+<span id="elapsed-info"></span>
+<button class="btn-d" onclick="disconnect()">断开连接</button>
+</div>
+</div>
+
+<div class="card">
+<div class="card-h">运行状态</div>
+<div class="warn-b" id="bufwarn" style="display:none">缓冲模式 — 消息预算已用完，等待用户回复任意消息激活</div>
+<div class="metrics">
+<div class="m-item"><div class="ml">Bot Token</div><span class="token-m" id="mask">****</span></div>
+<div class="m-item"><div class="ml">消息预算</div><div class="mv mv-g" id="budget">0 / 7</div><div class="m-bar"><b class="b-g" id="bbar" style="width:0%"></b></div></div>
+<div class="m-item"><div class="ml">Token 剩余</div><div class="mv mv-g" id="rem">--</div><div class="m-bar"><b class="b-g" id="rbar" style="width:0%"></b></div></div>
+<div class="m-item"><div class="ml">下次续期提醒</div><div class="mv" style="font-size:13px" id="nextrem">--</div></div>
+<div class="m-item"><div class="ml">缓冲队列</div><div class="mv" id="bufcnt">0</div></div>
+<div class="m-item"><div class="ml">接收队列</div><div class="mv" id="iqsize">0</div></div>
+</div>
+</div>
+</div>
+
+<!-- Right: Settings -->
+<div class="card">
+<div class="card-h">设置</div>
+<div class="fld"><label>消息预算上限</label><div class="hint">用户发消息后可主动回复的最大条数</div><input type="number" id="f-budget" min="1" max="99"></div>
+<div class="fld"><label>缓冲队列上限</label><div class="hint">预算耗尽后最多缓存的消息数</div><input type="number" id="f-buffer" min="10" max="1000"></div>
+<div class="fld"><label>续期提醒时间</label><div class="hint">登录多少小时后开始推送续期提醒</div><input type="number" id="f-warnh" min="1" max="23"></div>
+<div class="fld"><label>提醒间隔</label><div class="hint">未续期时重复提醒的间隔（分钟）</div><input type="number" id="f-warnm" min="10" max="1440"></div>
+<div class="btns">
+<button class="btn btn-p" onclick="saveSet()">保存设置</button>
+<button class="btn btn-s" onclick="loadSet()">恢复默认</button>
+</div>
+</div>
+
+</div>
+
+<div class="card doc">
+<div class="card-h">API 文档</div>
+<div class="ep">发送文本消息</div>
+<div class="desc">向微信发送文本通知，中文内容需用文件方式传递避免编码损坏。</div>
+<pre>echo '{"text":"通知内容"}' &gt; /tmp/msg.json
+curl -s -X POST http://localhost:<span class="p">0</span>/api/v1/wechat-bot/send/text \
+  -H "Content-Type: application/json" \
+  --data-binary @/tmp/msg.json</pre>
+<div class="desc"><b>返回</b>: <code>{"status":"sent"}</code> 或 <code>{"status":"buffered"}</code></div>
+
+<div class="ep">发送图片 / 文件 / 视频</div>
+<pre>curl -s -X POST http://localhost:<span class="p">0</span>/api/v1/wechat-bot/send/image \
+  -H "Content-Type: application/json" \
+  -d '{"file_path":"C:/photo.png"}'</pre>
+<div class="desc">替换 <code>/send/image</code> 为 <code>/send/file</code> 或 <code>/send/video</code></div>
+
+<div class="ep">查询收到的消息</div>
+<pre>curl -s http://localhost:<span class="p">0</span>/api/v1/wechat-bot/messages</pre>
+<div class="desc">支持增量拉取: <code>?since=2026-07-16T10:00:00Z</code>，清空用 <code>DELETE</code></div>
+
+<div class="ep">查询状态</div>
+<pre>curl -s http://localhost:<span class="p">0</span>/api/v1/wechat/status</pre>
+<div class="desc">端口自动检测，无需手动替换，查看 <code>~/.wechat-bot-server/config.json</code></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var S={send_budget_limit:7,max_buffered_messages:100,activation_warning_hours:20,activation_reminder_minutes:60,login_time:''};
+function T(m,ok){var e=document.getElementById('toast');e.textContent=m;e.className='toast on '+(ok?'t-ok':'t-err');setTimeout(function(){e.className='toast'},2500)}
+
+function loadQR(){
+var b=document.getElementById('qrbox');
+fetch('/api/v1/wechat/qrcode').then(function(r){return r.json()}).then(function(d){
+if(d.error){b.innerHTML='<div class=ph style=padding:12px>'+d.error+'</div>';return}
+var u=d.qrcode_img||d.qrcode_id;if(!u)return;
+b.innerHTML='';var i=document.createElement('img');
+i.src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&color=07c160&bgcolor=000&data='+encodeURIComponent(u);
+i.style.cssText='width:200px;height:200px';
+var l=document.createElement('div');l.style.cssText='margin-top:8px;display:none;font-size:12px';
+l.innerHTML='<a href="'+u+'" target=_blank style="color:var(--g)">打开微信扫码</a>';
+i.onerror=function(){i.style.display='none';l.style.display='block'};
+b.appendChild(i);b.appendChild(l)
+}).catch(function(){})
+}
+
+function loadStatus(){
+fetch('/api/v1/wechat/status').then(function(r){return r.json()}).then(function(d){
+var connected=!!d.connected,badge=document.getElementById('badge');
+badge.innerHTML='<span class="dot '+(connected?'g':'d')+'"></span>'+(connected?'已连接':(d.status==='expired'?'已过期':'未连接'));
+// Toggle panels
+document.getElementById('qr-panel').style.display=connected?'none':'block';
+document.getElementById('connected-panel').style.display=connected?'block':'none';
+
+if(connected&&d.login_time){
+S.login_time=d.login_time;
+var lt=new Date(d.login_time);
+document.getElementById('login-info').textContent='登录时间: '+lt.toLocaleString('zh-CN',{hour12:false});
+var el=Math.floor(d.elapsed_hours||0),em=Math.floor(((d.elapsed_hours||0)-el)*60);
+document.getElementById('elapsed-info').textContent='已运行 '+el+'h '+em+'m';
+}
+
+// Token
+var t=d.masked_token||'****';document.getElementById('mask').textContent=t;
+
+// Budget
+var bl=d.send_budget||{},br=bl.remaining||0,bll=bl.limit||7;
+document.getElementById('budget').textContent=br+' / '+bll;
+document.getElementById('bbar').style.width=(br/bll*100)+'%';
+
+// Remaining time countdown
+var rh=d.remaining_hours||0,rp=Math.min(100,rh/24*100);
+if(rh>0){
+var h=Math.floor(rh),m=Math.floor((rh-h)*60);
+document.getElementById('rem').textContent=h+'h '+m+'m';
+}else{document.getElementById('rem').textContent='--'}
+document.getElementById('rem').className='mv '+(rp>50?'mv-g':rp>20?'mv-y':'mv-r');
+document.getElementById('rbar').style.width=rp+'%';
+document.getElementById('rbar').className='b-'+(rp>50?'g':rp>20?'y':'r');
+
+// Next reminder (client-side calculation)
+if(d.login_time&&connected){
+var nr=new Date(new Date(d.login_time).getTime()+S.activation_warning_hours*3600000);
+var now=new Date();
+if(nr>now){
+var diff=nr-now,dh=Math.floor(diff/3600000),dm=Math.floor((diff%3600000)/60000);
+document.getElementById('nextrem').textContent=dh+'h '+dm+'m 后';
+}else{
+document.getElementById('nextrem').textContent='已过期';
+}
+}
+
+// Buffered / Queue
+document.getElementById('bufcnt').textContent=d.buffered_count||0;
+document.getElementById('bufcnt').className='mv'+(d.buffered_count>0?' mv-y':'');
+document.getElementById('iqsize').textContent=d.incoming_queue_size||0;
+document.getElementById('bufwarn').style.display=d.buffer_mode?'block':'none';
+
+if(d.send_budget)S.send_budget_limit=d.send_budget.limit;
+if(d.max_buffered_messages)S.max_buffered_messages=d.max_buffered_messages;
+if(d.activation_warning_hours)S.activation_warning_hours=d.activation_warning_hours;
+if(d.activation_reminder_minutes)S.activation_reminder_minutes=d.activation_reminder_minutes;
+loadSet()
+}).catch(function(){})
+}
+
+function disconnect(){
+fetch('/api/v1/wechat/disconnect',{method:'POST'}).then(function(){
+T('已断开',true);setTimeout(loadStatus,800)
+}).catch(function(){T('操作失败',false)})
+}
+
+function loadSet(){
+document.getElementById('f-budget').value=S.send_budget_limit;
+document.getElementById('f-buffer').value=S.max_buffered_messages;
+document.getElementById('f-warnh').value=S.activation_warning_hours;
+document.getElementById('f-warnm').value=S.activation_reminder_minutes
+}
+function saveSet(){
+var bl=+document.getElementById('f-budget').value,mb=+document.getElementById('f-buffer').value,wh=+document.getElementById('f-warnh').value,wm=+document.getElementById('f-warnm').value;
+if(bl<1||bl>99){T('消息预算上限需在 1-99 之间',false);return}
+if(mb<10||mb>1000){T('缓冲队列上限需在 10-1000 之间',false);return}
+if(wh<1||wh>23){T('续期提醒时间需在 1-23 小时之间',false);return}
+if(wm<10||wm>1440){T('提醒间隔需在 10-1440 分钟之间',false);return}
+S.send_budget_limit=bl;S.max_buffered_messages=mb;S.activation_warning_hours=wh;S.activation_reminder_minutes=wm;
+var body={send_budget_limit:bl,max_buffered_messages:mb,activation_warning_hours:wh,activation_reminder_minutes:wm};
+fetch('/api/v1/wechat/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){
+if(r.ok){T('设置已保存',true);loadStatus()}else{r.json().then(function(e){T(e.error||'保存失败',false)})}
+}).catch(function(){T('网络异常，保存失败',false)})
+}
+
+function toggleTheme(){
+var b=document.body,isLight=b.classList.toggle('light');
+document.getElementById('theme-btn').textContent=isLight?'🌙 暗色':'☀️ 亮色';
+localStorage.setItem('theme',isLight?'light':'dark')
+}
+(function(){
+if(localStorage.getItem('theme')==='light'){document.body.classList.add('light');document.getElementById('theme-btn').textContent='🌙 暗色'}
+})();
+(function(){var ps=document.querySelectorAll('.p');for(var i=0;i<ps.length;i++)ps[i].textContent=location.port||'18081'})();
+loadQR();loadSet();loadStatus();setInterval(loadStatus,5000);
+</script>
+</body>
+</html>
