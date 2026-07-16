@@ -1,6 +1,6 @@
 # wechat-bot-server
 
-独立微信机器人消息服务。从 cc-go 提取微信 iLink Bot 轮询 + 消息预算机制，封装为独立 Go 服务，配合 Claude Code Skill 实现微信消息收发。
+独立微信机器人消息服务。基于微信 iLink Bot 协议实现长轮询 + 消息预算机制，封装为独立 Go 服务，配合 Claude Code Skill 实现微信消息收发。
 
 ## 架构总览
 
