@@ -57,6 +57,7 @@ jobs:
           go build -ldflags "${{ matrix.ldflags }}" -o wechat-bot-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/wechat-bot-server/
 
       - name: UPX compress
+        if: matrix.goos != 'darwin'
         uses: crazy-max/ghaction-upx@v3
         with:
           version: latest
