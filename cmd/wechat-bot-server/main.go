@@ -40,9 +40,12 @@ func main() {
 		ForceBefore:               30 * time.Minute,
 	}
 
+	var reconnectStarted bool
+
 	wc.OnTokenSaved = func(token, baseURL string, loginTime time.Time) {
 		cfgMgr.UpdateWechat(token, baseURL, cfg.Wechat.CDNBaseURL, loginTime.Format(time.RFC3339))
 		wc.SetStatus(wechat.StatusConnected)
+		reconnectStarted = true
 		wc.StartReconnectTimer(reconnectCfg)
 		// Notify the user that the bot is back online.
 		ct := wc.LastContact()
@@ -53,7 +56,10 @@ func main() {
 
 	if cfg.Wechat.BotToken != "" {
 		wc.Start()
-		wc.StartReconnectTimer(reconnectCfg)
+		// Don't start reconnect timer yet — wait for first incoming message
+		// to establish a fresh LastContact (ContextToken). Otherwise
+		// sendActivationReminder uses a stale token from config and
+		// the activation message is silently dropped by WeChat.
 	}
 
 	budgetMgr := budget.NewManager(wc, cfg.Budget.SendBudgetLimit, cfg.Budget.MaxBufferedMessages)
@@ -67,6 +73,11 @@ func main() {
 	go func() {
 		for msg := range wc.Messages() {
 			cfgMgr.UpdateLastContact(msg.FromUserID, msg.ContextToken)
+			if !reconnectStarted {
+				reconnectStarted = true
+				wc.StartReconnectTimer(reconnectCfg)
+				log.Printf("[main] first message received, reconnect timer started")
+			}
 			budgetMgr.OnUserMessage(msg)
 			if strings.TrimSpace(msg.Text) != "/" {
 				incomingQ.Push(queue.IncomingMessage{
