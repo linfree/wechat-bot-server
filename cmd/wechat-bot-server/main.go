@@ -134,6 +134,17 @@ func main() {
 
 	// Block until signal or tray quit.
 	tray.Run(actualPort, wc, appIcon)
-	wc.Stop()
-	log.Println("[main] exited")
+
+	// Shutdown with timeout to prevent hang on tray exit.
+	done := make(chan struct{})
+	go func() {
+		wc.Stop()
+		close(done)
+	}()
+	select {
+	case <-done:
+		log.Println("[main] exited cleanly")
+	case <-time.After(5 * time.Second):
+		log.Println("[main] shutdown timeout, forcing exit")
+	}
 }

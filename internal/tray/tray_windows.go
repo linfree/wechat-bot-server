@@ -26,6 +26,7 @@ func Run(port int, client *wechat.Client, iconBytes []byte) {
 	icon = iconBytes
 	webURL = fmt.Sprintf("http://localhost:%d", port)
 	quitCh = make(chan struct{})
+
 	systray.Run(onReady, onExit)
 }
 
