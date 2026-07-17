@@ -21,6 +21,7 @@ var DefaultReconnectConfig = ReconnectConfig{
 }
 
 func (c *Client) StartReconnectTimer(cfg ReconnectConfig) {
+	// Stop any existing reconnect goroutine (align with cc-go).
 	c.mu.Lock()
 	if c.reconnectStopCh != nil {
 		select {
@@ -30,8 +31,7 @@ func (c *Client) StartReconnectTimer(cfg ReconnectConfig) {
 		}
 	}
 	c.reconnectStopCh = make(chan struct{})
-	reconStopCh := c.reconnectStopCh
-	mainStopCh := c.stopCh
+	stopCh := c.reconnectStopCh
 	c.mu.Unlock()
 
 	go func() {
@@ -47,30 +47,25 @@ func (c *Client) StartReconnectTimer(cfg ReconnectConfig) {
 
 		for {
 			select {
-			case <-mainStopCh:
-				log.Println("[reconnect] timer stopped via mainStopCh")
+			case <-c.stopCh:
+				// Align with cc-go: read c.stopCh directly each iteration
+				log.Println("[reconnect] timer stopped via stopCh")
 				stopQRPoll(qrPollStop)
 				return
-			case <-reconStopCh:
+			case <-stopCh:
 				log.Println("[reconnect] timer stopped via reconStopCh")
 				stopQRPoll(qrPollStop)
 				return
 			case confirmed := <-qrResultCh:
 				if confirmed {
 					log.Println("[reconnect] activation confirmed, session renewed")
-					stopQRPoll(qrPollStop)
-					qrPollStop = nil
-					qrResultCh = nil
-					activationStarted = false
 				} else {
-					// QR expired or scan failed — regenerate immediately
 					log.Println("[reconnect] activation QR expired, regenerating...")
-					stopQRPoll(qrPollStop)
-					qrPollStop = nil
-					qrResultCh = nil
-					activationStarted = false
-					// Don't continue — let the ticker case below re-trigger
 				}
+				stopQRPoll(qrPollStop)
+				qrPollStop = nil
+				qrResultCh = nil
+				activationStarted = false
 				continue
 			case <-ticker.C:
 			}
@@ -108,7 +103,7 @@ func (c *Client) StartReconnectTimer(cfg ReconnectConfig) {
 					c.sendActivationReminder(qrcode)
 					qrPollStop = make(chan struct{})
 					qrResultCh = make(chan bool, 1)
-					go c.pollQRCodeConfirmation(&qrcode, qrPollStop, reconStopCh, mainStopCh, qrResultCh)
+					go c.pollQRCodeConfirmation(&qrcode, qrPollStop, stopCh, qrResultCh)
 				} else if time.Since(lastReminder) >= time.Duration(cfg.ActivationReminderMinutes)*time.Minute {
 					lastReminder = time.Now()
 					log.Println("[reconnect] resending activation reminder")
@@ -134,9 +129,9 @@ func (c *Client) sendActivationReminder(qrcode string) {
 	}
 }
 
-// pollQRCodeConfirmation polls the QR code status until confirmed, expired, or stopped.
-// Sends result (true=confirmed, false=expired/stopped) to resultCh, then returns.
-func (c *Client) pollQRCodeConfirmation(qrcode *string, pollStop, reconnectStop, mainStop chan struct{}, resultCh chan<- bool) {
+// pollQRCodeConfirmation polls the QR code status. Aligns with cc-go: reads
+// c.stopCh directly each iteration, calls NotifyTokenSaved after SetToken+Start.
+func (c *Client) pollQRCodeConfirmation(qrcode *string, pollStop, reconnectStop chan struct{}, resultCh chan<- bool) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
@@ -155,7 +150,8 @@ func (c *Client) pollQRCodeConfirmation(qrcode *string, pollStop, reconnectStop,
 		case <-reconnectStop:
 			sendResult(false)
 			return
-		case <-mainStop:
+		case <-c.stopCh:
+			// Align with cc-go: read c.stopCh directly
 			sendResult(false)
 			return
 		case <-ticker.C:
@@ -189,14 +185,8 @@ func (c *Client) TriggerRelogin() error {
 	c.sendActivationReminder(qrcode)
 	pollStop := make(chan struct{})
 	time.AfterFunc(10*time.Minute, func() { close(pollStop) })
-	c.mu.RLock()
-	mainStopCh := c.stopCh
-	c.mu.RUnlock()
-	// TriggerRelogin doesn't use the reconnect timer's result channel
 	resultCh := make(chan bool, 1)
-	go func() {
-		c.pollQRCodeConfirmation(&qrcode, pollStop, nil, mainStopCh, resultCh)
-	}()
+	go c.pollQRCodeConfirmation(&qrcode, pollStop, nil, resultCh)
 	return nil
 }
 

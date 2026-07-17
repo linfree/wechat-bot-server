@@ -584,8 +584,7 @@ func (c *Client) pollLoop() {
 			default:
 			}
 			log.Printf("[wechat] poll error: %v", err)
-			// Don't change status here — let reconnect timer handle token
-			// expiry. Transient network errors will self-heal.
+			c.SetStatus(StatusDisconnected)
 			select {
 			case <-c.stopCh:
 				return
