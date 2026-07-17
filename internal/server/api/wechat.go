@@ -97,6 +97,8 @@ func (h *WechatHandler) HandleDisconnect(c *gin.Context) {
 		_ = h.Client.SendMessage(ct.FromID, ct.ContextToken, "机器人已断开连接")
 	}
 	h.Client.Stop()
+	// Clear saved token so restart doesn't auto-reconnect.
+	_ = h.ConfigMgr.UpdateWechat("", "", "", "")
 	c.JSON(http.StatusOK, gin.H{"status": "disconnected"})
 }
 
