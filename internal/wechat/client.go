@@ -253,8 +253,8 @@ func (c *Client) StartQRPolling(qrcodeID string) {
 			}
 			if confirmed {
 				c.SetToken(token, baseURL)
-				c.NotifyTokenSaved()
 				c.Start()
+				c.NotifyTokenSaved()
 				return
 			}
 		}
@@ -555,7 +555,8 @@ func (c *Client) pollLoop() {
 			default:
 			}
 			log.Printf("[wechat] poll error: %v", err)
-			c.SetStatus(StatusDisconnected)
+			// Don't change status here — let reconnect timer handle token
+			// expiry. Transient network errors will self-heal.
 			select {
 			case <-c.stopCh:
 				return
