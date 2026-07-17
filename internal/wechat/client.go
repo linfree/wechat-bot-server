@@ -207,28 +207,11 @@ func (c *Client) doRequest(method, path string, bodyData []byte, ctx ...context.
 }
 
 func (c *Client) GetQRCode() (string, string, error) {
-	// Use POST with current token in body for reconnection support.
-	// Fall back to GET if POST returns no qrcode.
-	token := c.Token()
-	localTokens := []string{}
-	if token != "" {
-		localTokens = []string{token}
-	}
-	bodyData, _ := json.Marshal(map[string]interface{}{
-		"local_token_list": localTokens,
-	})
-	result, err := c.doRequest("POST", "ilink/bot/get_bot_qrcode?bot_type=3", bodyData)
+	result, err := c.doRequest("GET", "ilink/bot/get_bot_qrcode?bot_type=3", nil)
 	if err != nil {
 		return "", "", err
 	}
 	qrcode, _ := result["qrcode"].(string)
-	if qrcode == "" {
-		result, err = c.doRequest("GET", "ilink/bot/get_bot_qrcode?bot_type=3", nil)
-		if err != nil {
-			return "", "", err
-		}
-		qrcode, _ = result["qrcode"].(string)
-	}
 	qrcodeImg, _ := result["qrcode_img_content"].(string)
 	return qrcode, qrcodeImg, nil
 }
