@@ -113,18 +113,25 @@ func (c *Client) Token() string {
 
 func (c *Client) SetToken(token, baseURL string) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.botToken = token
 	if baseURL != "" {
 		c.baseURL = baseURL
 	}
 	c.loginTime = time.Now()
-	cb := c.OnTokenSaved
-	c.mu.Unlock()
+}
 
-	// Call the callback OUTSIDE the lock — OnTokenSaved typically calls
-	// SetStatus / StartReconnectTimer which also need c.mu.
+// NotifyTokenSaved triggers the OnTokenSaved callback. Called externally
+// after SetToken to avoid nested callback issues during reconnection.
+func (c *Client) NotifyTokenSaved() {
+	c.mu.RLock()
+	token := c.botToken
+	baseURL := c.baseURL
+	loginTime := c.loginTime
+	cb := c.OnTokenSaved
+	c.mu.RUnlock()
 	if cb != nil {
-		cb(token, baseURL, c.loginTime)
+		cb(token, baseURL, loginTime)
 	}
 }
 
@@ -245,7 +252,8 @@ func (c *Client) StartQRPolling(qrcodeID string) {
 				continue
 			}
 			if confirmed {
-				c.SetToken(token, baseURL) // OnTokenSaved is called inside, outside the lock
+				c.SetToken(token, baseURL)
+				c.NotifyTokenSaved()
 				c.Start()
 				return
 			}
