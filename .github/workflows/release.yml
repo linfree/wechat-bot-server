@@ -24,13 +24,11 @@ jobs:
             runner: macos-latest
             ext: ''
             ldflags: -s -w
-            cgo: 0
           - goos: darwin
             goarch: arm64
             runner: macos-latest
             ext: ''
             ldflags: -s -w
-            cgo: 0
           - goos: linux
             goarch: amd64
             runner: ubuntu-latest
@@ -100,9 +98,10 @@ jobs:
             ## 使用说明
 
             1. 下载对应平台的文件
-            2. **Windows**：双击 `exe`，托盘会出现微信机器人图标，右键打开管理页面扫码登录
-            3. **macOS / Linux**：终端运行 `./wechat-bot-server-*`，浏览器打开 `http://localhost:18081` 扫码登录
-            4. 配置文件位于 `~/.wechat-bot-server/config.json`
+            2. **Windows**：双击 `exe`，系统托盘出现微信机器人图标，右键打开管理页面扫码登录
+            3. **macOS**：终端运行 `./wechat-bot-server-darwin-*`，菜单栏会出现托盘图标
+            4. **Linux**：终端运行 `./wechat-bot-server-linux-*`，浏览器打开 `http://localhost:18081` 扫码登录
+            5. 配置文件位于 `~/.wechat-bot-server/config.json`
 
             ## macOS 用户注意
 
