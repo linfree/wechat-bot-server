@@ -46,11 +46,6 @@ func main() {
 		cfgMgr.UpdateWechat(token, baseURL, cfg.Wechat.CDNBaseURL, loginTime.Format(time.RFC3339))
 		wc.SetStatus(wechat.StatusConnected)
 		wc.StartReconnectTimer(reconnectCfg)
-		// Notify user that bot is online.
-		ct := wc.LastContact()
-		if ct.FromID != "" {
-			_ = wc.SendMessage(ct.FromID, ct.ContextToken, "机器人已连接")
-		}
 	}
 
 	// Align with cc-go: Start pollLoop + reconnect timer at startup.

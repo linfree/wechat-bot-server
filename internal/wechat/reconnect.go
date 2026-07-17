@@ -168,7 +168,6 @@ func (c *Client) pollQRCodeConfirmation(qrcode *string, pollStop, reconnectStop 
 		}
 		if confirmed {
 			c.SetToken(token, baseURL)
-			c.Start()
 			c.NotifyTokenSaved()
 			log.Println("[reconnect] qrcode confirmed, token updated")
 			sendResult(true)
