@@ -207,11 +207,28 @@ func (c *Client) doRequest(method, path string, bodyData []byte, ctx ...context.
 }
 
 func (c *Client) GetQRCode() (string, string, error) {
-	result, err := c.doRequest("GET", "ilink/bot/get_bot_qrcode?bot_type=3", nil)
+	// Use POST with current token in body for reconnection support.
+	// Fall back to GET if POST returns no qrcode.
+	token := c.Token()
+	localTokens := []string{}
+	if token != "" {
+		localTokens = []string{token}
+	}
+	bodyData, _ := json.Marshal(map[string]interface{}{
+		"local_token_list": localTokens,
+	})
+	result, err := c.doRequest("POST", "ilink/bot/get_bot_qrcode?bot_type=3", bodyData)
 	if err != nil {
 		return "", "", err
 	}
 	qrcode, _ := result["qrcode"].(string)
+	if qrcode == "" {
+		result, err = c.doRequest("GET", "ilink/bot/get_bot_qrcode?bot_type=3", nil)
+		if err != nil {
+			return "", "", err
+		}
+		qrcode, _ = result["qrcode"].(string)
+	}
 	qrcodeImg, _ := result["qrcode_img_content"].(string)
 	return qrcode, qrcodeImg, nil
 }
@@ -247,7 +264,7 @@ func (c *Client) StartQRPolling(qrcodeID string) {
 				return
 			case <-ticker.C:
 			}
-			confirmed, token, baseURL, err := c.CheckQRCodeStatus(qrcodeID)
+			confirmed, _, token, baseURL, err := c.CheckQRCodeStatus(qrcodeID)
 			if err != nil {
 				continue
 			}
@@ -261,19 +278,23 @@ func (c *Client) StartQRPolling(qrcodeID string) {
 	}()
 }
 
-func (c *Client) CheckQRCodeStatus(qrcode string) (bool, string, string, error) {
+func (c *Client) CheckQRCodeStatus(qrcode string) (confirmed bool, expired bool, token string, baseURL string, err error) {
 	result, err := c.doRequest("GET", "ilink/bot/get_qrcode_status?qrcode="+qrcode, nil)
 	if err != nil {
-		return false, "", "", err
+		return false, false, "", "", err
 	}
 	status, _ := result["status"].(string)
-	if status == "confirmed" {
-		token, _ := result["bot_token"].(string)
-		baseURL, _ := result["baseurl"].(string)
-		return true, token, baseURL, nil
+		if status == "confirmed" {
+		token, _ = result["bot_token"].(string)
+		baseURL, _ = result["baseurl"].(string)
+		return true, false, token, baseURL, nil
 	}
-	return false, "", "", nil
+	if status == "expired" {
+		return false, true, "", "", nil
+	}
+	return false, false, "", "", nil
 }
+
 
 // SendMessageItemList sends a message with a custom item_list.
 func (c *Client) SendMessageItemList(toID, contextToken string, itemList []map[string]interface{}) error {
@@ -290,8 +311,16 @@ func (c *Client) SendMessageItemList(toID, contextToken string, itemList []map[s
 		},
 		"base_info": map[string]string{"channel_version": "1.0.2"},
 	})
-	_, err := c.doRequest("POST", "ilink/bot/sendmessage", body)
-	return err
+	result, err := c.doRequest("POST", "ilink/bot/sendmessage", body)
+	if err != nil {
+		return err
+	}
+	rc, _ := result["ret_code"].(float64)
+	msg, _ := result["ret_msg"].(string)
+	if rc != 0 {
+		return fmt.Errorf("sendmessage: ret_code=%v, ret_msg=%s", rc, msg)
+	}
+	return nil
 }
 
 func (c *Client) SendMessage(toID, contextToken, text string) error {

@@ -196,7 +196,7 @@ b.appendChild(i);b.appendChild(l)
 }
 
 function loadStatus(){
-fetch('/api/v1/wechat/status').then(function(r){return r.json()}).then(function(d){
+return fetch('/api/v1/wechat/status').then(function(r){return r.json()}).then(function(d){
 var connected=!!d.connected,badge=document.getElementById('badge');
 badge.innerHTML='<span class="dot '+(connected?'g':'d')+'"></span>'+(connected?'已连接':(d.status==='expired'?'已过期':'未连接'));
 // Toggle panels
@@ -289,7 +289,7 @@ localStorage.setItem('theme',isLight?'light':'dark')
 if(localStorage.getItem('theme')==='light'){document.body.classList.add('light');document.getElementById('theme-btn').textContent='🌙 暗色'}
 })();
 (function(){var ps=document.querySelectorAll('.p');for(var i=0;i<ps.length;i++)ps[i].textContent=location.port||'18081'})();
-loadQR();loadSet();loadStatus();setInterval(loadStatus,5000);
+loadSet();loadStatus().then(function(d){if(!d.connected)loadQR()});setInterval(loadStatus,5000);
 </script>
 </body>
 </html>

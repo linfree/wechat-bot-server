@@ -95,6 +95,7 @@ func TestOnTokenSavedCallback(t *testing.T) {
 		}
 	}
 	c.SetToken("callback-token", "https://example.com")
+	c.NotifyTokenSaved()
 	if !called {
 		t.Error("OnTokenSaved callback not called")
 	}
